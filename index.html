@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="dark">
+<title>PIP-BOY 3000 MK IV // DEV PORTFOLIO TERMINAL</title>
+<meta name="description" content="Interactive personal developer portfolio styled as a Pip-Boy 3000 Mk IV terminal.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   PIP-BOY 3000 MK IV TERMINAL
+   Phosphor monochrome CRT. Radius 0. No soft shadows.
+   Glow is state, not decoration:
+     bloom-lv3 = active / focal, bloom-lv1 = base phosphor texture,
+     dim text = no bloom at all.
+   ============================================================ */
+:root{
+  --pip:#00FF66;          /* primary phosphor */
+  --dim:#00AA44;          /* spec dim: legal only at >=18px under scanlines */
+  --dim-2:#00C857;        /* small secondary text: 5.7:1 under scanlines (R-25) */
+  --bg:#020D04;           /* screen interior */
+  --panel:#051A0A;        /* dark panel */
+  --line:#004411;         /* borders */
+  --sel:#003311;          /* selection fill */
+  --metal:#171b17;        /* hardware housing */
+  --metal-ink:#8fa08f;    /* printed label on metal */
+  --bloom-3:0 0 6px rgba(0,255,102,.7);
+  --bloom-1:0 0 3px rgba(0,255,102,.32);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+html{-webkit-text-size-adjust:100%}
+body{
+  min-height:100vh;
+  padding:14px;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  background:#050705;
+  color:var(--pip);
+  font-family:'Share Tech Mono','VT323','Courier New',monospace;
+  font-size:15px;
+  line-height:1.45;
+}
+@media (min-width:768px){ body{padding:26px} }
+button,input,textarea{font:inherit;color:inherit;border-radius:0}
+:focus-visible{outline:2px solid var(--pip);outline-offset:2px}
+::selection{background:var(--sel);color:var(--pip)}
+
+/* ---------- hardware housing ---------- */
+.rig{
+  position:relative;
+  width:100%;
+  max-width:1120px;
+  background:var(--metal);
+  border:2px solid #000;
+  box-shadow:inset 0 0 0 1px #2a312a; /* 0-blur bevel line, not a soft shadow */
+  padding:14px;
+}
+.rig__screw{
+  position:absolute;width:10px;height:10px;
+  background:#0e120e;border:1px solid #000;
+}
+.rig__screw::after{content:"";position:absolute;inset:2px;background:#39423a}
+.rig__screw--tl{top:6px;left:6px}
+.rig__screw--tr{top:6px;right:6px}
+.rig__screw--bl{bottom:6px;left:6px}
+.rig__screw--br{bottom:6px;right:6px}
+.rig__plate{
+  display:flex;flex-wrap:wrap;gap:4px 18px;justify-content:space-between;
+  padding:0 18px 10px;
+  color:var(--metal-ink);
+  font-size:11px;letter-spacing:2px;text-transform:uppercase;
+}
+.rig__plate .dot{display:inline-block;width:8px;height:8px;background:var(--pip);margin-right:6px;vertical-align:1px}
+
+/* ---------- CRT screen ---------- */
+.screen{
+  position:relative;
+  background:var(--bg);
+  border:2px solid #000;
+  box-shadow:inset 0 0 80px rgba(0,0,0,.8); /* CRT corner vignette */
+  padding:14px;
+  overflow:hidden;
+}
+@media (min-width:768px){ .screen{padding:20px;min-height:620px} }
+.fx-scan{
+  position:absolute;inset:0;z-index:5;pointer-events:none;
+  background:repeating-linear-gradient(0deg,rgba(0,0,0,.5) 0px,rgba(0,0,0,.5) 1px,transparent 1px,transparent 2px);
+}
+.os{
+  position:relative;z-index:1;
+  display:flex;flex-direction:column;gap:12px;
+  min-height:inherit;
+  text-shadow:var(--bloom-1); /* base phosphor texture */
+  animation:pipFlicker 3.4s ease-in-out infinite;
+}
+@keyframes pipFlicker{0%,100%{opacity:1}42%{opacity:.98}44%{opacity:1}77%{opacity:.985}}
+@keyframes pipGlitch{
+  0%{transform:scaleY(.02) scaleX(.85);filter:brightness(2.4)}
+  55%{transform:scaleY(1.04) scaleX(1);filter:brightness(1.4)}
+  100%{transform:none;filter:none}
+}
+.glitch{animation:pipGlitch .18s cubic-bezier(.2,.9,.25,1)}
+
+/* text glow levels */
+.dim{color:var(--dim-2);text-shadow:none}      /* secondary, no bloom */
+.glow{text-shadow:var(--bloom-3)}              /* active / focal only */
+.ph{
+  color:var(--dim-2);text-shadow:none;
+  border-bottom:1px dotted var(--dim);
+  cursor:help;
+}
+.empty{color:var(--dim-2);text-shadow:none;padding:10px 0}
+
+/* ---------- status bars ---------- */
+.status{
+  display:flex;flex-wrap:wrap;gap:6px 16px;align-items:center;justify-content:space-between;
+  border-bottom:1px solid var(--line);
+  padding-bottom:8px;
+  font-size:12px;letter-spacing:1px;text-transform:uppercase;
+}
+.status--foot{border-bottom:0;border-top:1px solid var(--line);padding:8px 0 0}
+.status__group{display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center}
+.vault-id{color:var(--pip)}
+.clock{font-size:clamp(14px,2.4vw,18px);text-align:center}
+.clock .sep{color:var(--dim-2);text-shadow:none;padding:0 4px}
+.hud b{font-weight:400;color:var(--pip)}
+
+/* ---------- main tabs ---------- */
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tab{
+  background:transparent;border:1px solid var(--line);color:var(--dim-2);
+  text-transform:uppercase;letter-spacing:2px;
+  min-height:44px;cursor:pointer;
+  transition:background .12s linear,color .12s linear,border-color .12s linear;
+}
+.tab:hover{background:var(--sel);color:var(--pip)}
+.tab[aria-selected="true"]{
+  background:var(--sel);border-color:var(--pip);color:var(--pip);
+  text-shadow:var(--bloom-3);
+}
+.tab .k{color:var(--dim);text-shadow:none}
+.tab[aria-selected="true"] .k{color:var(--pip)}
+@media (max-width:520px){
+  .tab{font-size:13px;letter-spacing:1px}
+  .tab .k{display:none} /* key hint stays in the footer bar */
+}
+
+/* ---------- shared panel parts ---------- */
+.viewport{flex:1;display:flex;flex-direction:column}
+.panel{display:flex;flex-direction:column;gap:12px;flex:1}
+.panel__title{
+  align-self:flex-start;
+  background:var(--pip);color:var(--bg);
+  text-transform:uppercase;letter-spacing:3px;
+  padding:2px 10px;font-size:13px;
+  text-shadow:none;
+}
+.box{border:1px solid var(--line);background:var(--panel);padding:12px;min-width:0}
+.box__head{
+  display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;
+  border-bottom:1px solid var(--line);padding-bottom:6px;margin-bottom:10px;
+  font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim-2);text-shadow:none;
+}
+.btn{
+  background:transparent;border:1px solid var(--line);color:var(--pip);
+  text-transform:uppercase;letter-spacing:1px;
+  padding:10px 12px;min-height:44px;cursor:pointer;
+  transition:background .12s linear,color .12s linear,border-color .12s linear;
+}
+.btn:hover{background:var(--sel);border-color:var(--dim)}
+.btn:active{background:var(--pip);color:var(--bg);text-shadow:none}
+.btn--primary{background:var(--pip);color:var(--bg);border-color:var(--pip);text-shadow:none;font-weight:700}
+.btn--primary:hover{background:#00cc52;color:var(--bg)}
+.btn.is-active{background:var(--sel);border-color:var(--pip);text-shadow:var(--bloom-3)}
+.status-line{font-size:12px;letter-spacing:1px;text-transform:uppercase;min-height:18px}
+.status-line.err{color:#ffd24d;text-shadow:0 0 4px rgba(255,210,77,.5)} /* warning amber: error channel, not decoration */
+.status-line.ok{color:var(--pip)}
+
+/* ---------- STAT ---------- */
+.stat-grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:768px){ .stat-grid{grid-template-columns:5fr 7fr} }
+.dweller-wrap{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;overflow:hidden}
+.dweller{width:min(190px,60vw);color:var(--pip);filter:drop-shadow(0 0 5px rgba(0,255,102,.45))}
+.dweller .eye{animation:blink 5.2s steps(1,end) infinite}
+@keyframes blink{0%,94%,100%{opacity:1}96%{opacity:0}}
+.sweep{
+  position:absolute;left:0;right:0;top:0;height:26px;pointer-events:none;
+  background:linear-gradient(180deg,transparent,rgba(0,255,102,.22),transparent);
+  animation:sweepDown 3.6s linear infinite;
+}
+@keyframes sweepDown{from{transform:translateY(-30px)}to{transform:translateY(260px)}}
+.id-card dl{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font-size:13px}
+.id-card dt{color:var(--dim-2);text-shadow:none}
+.id-card dd{min-width:0;word-break:break-word}
+.bio{margin-top:10px;border-top:1px solid var(--line);padding-top:10px;font-size:13px;word-break:break-word}
+.special-head{font-size:18px;letter-spacing:2px;color:var(--dim);text-shadow:var(--bloom-1);margin-bottom:8px}
+.stat-row{border-bottom:1px solid var(--line);padding:8px 0}
+.stat-row:last-child{border-bottom:0}
+.stat-row__head{display:flex;justify-content:space-between;gap:10px;text-transform:uppercase;letter-spacing:1px}
+.stat-row__val{color:var(--dim-2);text-shadow:none}
+.stat-row__skill{font-size:12px;letter-spacing:1px}
+.segs{display:flex;gap:3px;margin-top:5px}
+.segs i{
+  flex:1;height:10px;border:1px solid var(--line);background:transparent;
+  transition:background .18s linear,box-shadow .18s linear;
+  transition-delay:calc(var(--i) * 45ms);
+}
+.segs.lit i.on{background:var(--pip);box-shadow:0 0 5px rgba(0,255,102,.55)}
+.segs i.on{background:var(--pip)}
+
+/* ---------- INV ---------- */
+.filters{display:flex;gap:6px;flex-wrap:wrap}
+.filters .btn{min-height:40px;padding:8px 12px;font-size:13px}
+.inv-grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:768px){ .inv-grid{grid-template-columns:5fr 7fr;align-items:stretch} }
+.inv-list{display:flex;flex-direction:column;gap:6px;max-height:320px;overflow-y:auto}
+.item{
+  display:flex;gap:10px;align-items:baseline;text-align:left;
+  background:transparent;border:1px solid var(--line);color:var(--pip);
+  padding:10px;min-height:44px;cursor:pointer;width:100%;
+  text-transform:uppercase;letter-spacing:1px;
+}
+.item::before{content:" ";white-space:pre;color:var(--pip)}
+.item:hover{background:var(--sel)}
+.item.is-active{background:var(--sel);border-color:var(--pip);text-shadow:var(--bloom-3)}
+.item.is-active::before{content:">"}
+.item__cat{color:var(--dim-2);text-shadow:none;font-size:12px;flex-shrink:0}
+.item__name{min-width:0;word-break:break-word}
+.shot{
+  border:1px dashed var(--dim);min-height:120px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  text-align:center;padding:10px;margin-bottom:10px;
+}
+.shot__tag{letter-spacing:3px;text-transform:uppercase;color:var(--dim-2);text-shadow:none;font-size:12px}
+.insp-title{font-size:17px;text-transform:uppercase;letter-spacing:1px;word-break:break-word;margin-bottom:8px}
+.insp-desc{font-size:13px;margin-bottom:10px;word-break:break-word}
+.metrics{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:8px;
+  border-top:1px solid var(--line);border-bottom:1px solid var(--line);
+  padding:8px 0;margin-bottom:10px;font-size:12px;letter-spacing:1px;text-transform:uppercase;
+}
+.metrics b{display:block;font-weight:400;color:var(--dim-2);text-shadow:none}
+.insp-actions{display:flex;gap:8px;flex-wrap:wrap}
+.insp-actions .btn{flex:1;min-width:150px}
+
+/* ---------- DATA ---------- */
+.subtabs{display:flex;gap:6px;flex-wrap:wrap}
+.subtabs .btn{min-height:40px;padding:8px 12px;font-size:13px}
+.quest{border:1px solid var(--line);background:var(--panel)}
+.quest__head{
+  display:flex;gap:10px;align-items:baseline;justify-content:space-between;
+  width:100%;text-align:left;background:transparent;border:0;cursor:pointer;
+  padding:12px;min-height:44px;text-transform:uppercase;letter-spacing:1px;
+}
+.quest__head:hover{background:var(--sel)}
+.quest__tag{color:var(--dim-2);text-shadow:none;font-size:12px;flex-shrink:0}
+.quest__title{flex:1;min-width:0;word-break:break-word}
+.quest__head .mark{flex-shrink:0}
+.quest__body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .18s ease-out}
+.quest.is-open .quest__body{grid-template-rows:1fr}
+.quest__inner{overflow:hidden}
+.quest__pad{border-top:1px solid var(--line);padding:10px 12px;font-size:13px}
+.quest__pad li{list-style:none;padding-left:14px;position:relative;word-break:break-word}
+.quest__pad li::before{content:"> ";color:var(--dim-2)}
+.quest__reward{margin-top:8px;color:var(--pip);text-transform:uppercase;letter-spacing:1px;font-size:12px}
+
+/* ---------- RADIO ---------- */
+.radio-grid{display:grid;gap:12px;grid-template-columns:1fr}
+@media (min-width:768px){ .radio-grid{grid-template-columns:5fr 7fr} }
+.freq-list{display:flex;flex-direction:column;gap:6px}
+.freq{
+  display:flex;justify-content:space-between;gap:10px;align-items:center;
+  background:transparent;border:1px solid var(--line);color:var(--pip);
+  padding:10px 12px;min-height:44px;cursor:pointer;width:100%;
+  text-transform:uppercase;letter-spacing:1px;text-align:left;
+}
+.freq:hover{background:var(--sel)}
+.freq.is-active{background:var(--sel);border-color:var(--pip);text-shadow:var(--bloom-3)}
+.freq__mhz{flex-shrink:0}
+.freq__state{color:var(--dim-2);text-shadow:none;font-size:12px;flex-shrink:0}
+.tuner{display:flex;flex-direction:column;gap:10px}
+.tuner__read{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tuner__freq{font-size:clamp(24px,4.5vw,34px);letter-spacing:2px}
+.tuner__meter{display:flex;gap:3px;margin-top:6px}
+.tuner__meter i{width:14px;height:8px;border:1px solid var(--line)}
+.tuner__meter i.on{background:var(--pip);box-shadow:0 0 5px rgba(0,255,102,.55)}
+#wave{width:100%;height:120px;display:block;border:1px solid var(--line);background:#010802}
+.form{display:flex;flex-direction:column;gap:8px}
+.form label{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:var(--dim-2);text-shadow:none}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input,.field textarea{
+  background:var(--panel);border:1px solid var(--line);color:var(--pip);
+  padding:10px;min-height:44px;width:100%;resize:vertical;
+}
+.field input::placeholder,.field textarea::placeholder{color:var(--dim-2);opacity:.75;text-shadow:none}
+.field input:focus,.field textarea:focus{border-color:var(--pip);outline:none;box-shadow:0 0 0 1px var(--pip)}
+
+/* ---------- scrollbar ---------- */
+::-webkit-scrollbar{width:8px;height:8px}
+::-webkit-scrollbar-track{background:var(--panel);border:1px solid var(--line)}
+::-webkit-scrollbar-thumb{background:var(--dim)}
+
+/* ---------- reduced motion ---------- */
+@media (prefers-reduced-motion:reduce){
+  .os,.dweller .eye,.sweep{animation:none}
+  .glitch{animation:none}
+  .segs i{transition:none}
+  .quest__body{transition:none}
+  .sweep{display:none}
+}
+</style>
+</head>
+<body>
+
+<div class="rig">
+  <span class="rig__screw rig__screw--tl"></span>
+  <span class="rig__screw rig__screw--tr"></span>
+  <span class="rig__screw rig__screw--bl"></span>
+  <span class="rig__screw rig__screw--br"></span>
+
+  <div class="rig__plate">
+    <span><span class="dot"></span>Robco Industries</span>
+    <span>Pip-Boy 3000 Mk IV</span>
+    <span>OS v3.8.10</span>
+  </div>
+
+  <div class="screen">
+    <div class="fx-scan" aria-hidden="true"></div>
+
+    <div class="os" id="os">
+
+      <!-- ============ STATUS BAR ============ -->
+      <header class="status">
+        <div class="status__group">
+          <span class="vault-id">VAULT-111 // DEV_PORTFOLIO</span>
+        </div>
+        <div class="clock glow" aria-live="off">
+          <span id="clock-time">--:--:--</span>
+          <span class="sep">//</span>
+          <span id="clock-date">---</span>
+          <span class="sep">//</span>
+          <span>DEP-2026</span>
+        </div>
+        <div class="status__group hud">
+          <span>HP <b>100/100</b></span>
+          <span>AP <b>09/09</b></span>
+          <span>LVL <b>28</b></span>
+          <span>CAPS <b>999</b></span>
+        </div>
+      </header>
+
+      <!-- ============ MAIN TABS ============ -->
+      <nav class="tabs" role="tablist" aria-label="Pip-Boy main sections">
+        <button class="tab" id="tab-stat" role="tab" aria-selected="true" aria-controls="panel-stat" data-tab="stat"><span class="k">[1]</span> STAT</button>
+        <button class="tab" id="tab-inv" role="tab" aria-selected="false" aria-controls="panel-inv" data-tab="inv" tabindex="-1"><span class="k">[2]</span> INV</button>
+        <button class="tab" id="tab-data" role="tab" aria-selected="false" aria-controls="panel-data" data-tab="data" tabindex="-1"><span class="k">[3]</span> DATA</button>
+        <button class="tab" id="tab-radio" role="tab" aria-selected="false" aria-controls="panel-radio" data-tab="radio" tabindex="-1"><span class="k">[4]</span> RADIO</button>
+      </nav>
+
+      <!-- ============ VIEWPORT ============ -->
+      <main class="viewport" id="viewport">
+
+        <!-- ===== TAB 1: STAT ===== -->
+        <section class="panel" id="panel-stat" role="tabpanel" aria-labelledby="tab-stat">
+          <h2 class="panel__title">STAT // OPERATOR PROFILE</h2>
+
+          <div class="stat-grid">
+            <div class="box id-card">
+              <div class="box__head"><span>SUBJECT FILE</span><span>SELF-DIAGNOSTIC RUNNING</span></div>
+              <div class="dweller-wrap">
+                <div class="sweep" aria-hidden="true"></div>
+                <svg class="dweller" viewBox="0 0 120 140" role="img" aria-label="Wireframe vault dweller avatar placeholder">
+                  <g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="square">
+                    <circle cx="58" cy="36" r="21"/>
+                    <path d="M38 28 Q52 12 76 23"/>
+                    <path d="M46 45 Q58 54 70 45"/>
+                    <path d="M30 76 L43 64 L73 64 L86 76 L86 134 L30 134 Z"/>
+                    <path d="M49 64 L58 76 L67 64"/>
+                    <rect x="50" y="92" width="16" height="14"/>
+                    <path d="M86 82 L98 70 L98 58"/>
+                    <path d="M93 58 L105 58 L105 74 L93 74 Z"/>
+                    <path d="M96 58 L96 48 L101 48 L101 58"/>
+                  </g>
+                  <circle class="eye" cx="51" cy="33" r="2.6" fill="currentColor"/>
+                  <circle class="eye" cx="65" cy="33" r="2.6" fill="currentColor"/>
+                </svg>
+              </div>
+              <dl>
+                <dt>NAME</dt><dd id="stat-name"></dd>
+                <dt>CLASS</dt><dd id="stat-role"></dd>
+                <dt>LOCATION</dt><dd id="stat-loc"></dd>
+                <dt>STATUS</dt><dd id="stat-avail"></dd>
+              </dl>
+              <p class="bio" id="stat-bio"></p>
+            </div>
+
+            <div class="box">
+              <div class="box__head"><span>ATTRIBUTES</span><span>SCALE 0-10</span></div>
+              <div class="special-head">// S.P.E.C.I.A.L. CALIBRATION</div>
+              <p class="status-line" id="special-notice" hidden></p>
+              <div id="special-list"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== TAB 2: INV ===== -->
+        <section class="panel" id="panel-inv" role="tabpanel" aria-labelledby="tab-inv" hidden>
+          <h2 class="panel__title">INV // PROJECT ARTIFACTS</h2>
+
+          <div class="filters" role="group" aria-label="Project category filter">
+            <button class="btn is-active" data-filter="all">ALL <span data-count="all"></span></button>
+            <button class="btn" data-filter="WEAPONS">[WEAPONS] WEB APPS <span data-count="WEAPONS"></span></button>
+            <button class="btn" data-filter="ARMOR">[ARMOR] SYSTEMS / API <span data-count="ARMOR"></span></button>
+            <button class="btn" data-filter="AID">[AID] LIB / OSS <span data-count="AID"></span></button>
+          </div>
+
+          <div class="inv-grid">
+            <div class="box">
+              <div class="box__head"><span>CARRY LIST</span><span id="inv-count">0 ITEMS</span></div>
+              <div class="inv-list" id="inv-list" role="listbox" aria-label="Project list"></div>
+            </div>
+
+            <div class="box" id="insp">
+              <div class="box__head"><span>ITEM INSPECTION</span><span id="insp-slot">SLOT --</span></div>
+              <div id="insp-body"></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- ===== TAB 3: DATA ===== -->
+        <section class="panel" id="panel-data" role="tabpanel" aria-labelledby="tab-data" hidden>
+          <h2 class="panel__title">DATA // QUEST LOG</h2>
+
+          <div class="subtabs" role="group" aria-label="Quest log category">
+            <button class="btn is-active" data-quest="main">[MAIN QUESTS] WORK</button>
+            <button class="btn" data-quest="side">[SIDE QUESTS] FREELANCE</button>
+            <button class="btn" data-quest="completed">[COMPLETED] EDU / CERTS</button>
+          </div>
+
+          <div id="quest-list"></div>
+        </section>
+
+        <!-- ===== TAB 4: RADIO ===== -->
+        <section class="panel" id="panel-radio" role="tabpanel" aria-labelledby="tab-radio" hidden>
+          <h2 class="panel__title">RADIO // OUTBOUND CHANNELS</h2>
+
+          <div class="radio-grid">
+            <div class="box">
+              <div class="box__head"><span>FREQUENCIES</span><span>SCAN: AUTO</span></div>
+              <div class="freq-list" id="freq-list" role="group" aria-label="Radio frequencies"></div>
+            </div>
+
+            <div class="box tuner">
+              <div class="box__head"><span>TUNER</span><span id="signal-state">NO SIGNAL</span></div>
+              <div class="tuner__read">
+                <span class="tuner__freq glow" id="tuner-freq">88.5 MHZ</span>
+                <span class="dim" id="tuner-band">--</span>
+              </div>
+              <div class="tuner__meter" id="signal-meter" aria-hidden="true"></div>
+              <canvas id="wave" role="img" aria-label="Animated radio waveform visualizer"></canvas>
+              <p class="status-line" id="radio-status" aria-live="polite"></p>
+              <button class="btn btn--primary" id="btn-transmit">[ TRANSMIT // OPEN CHANNEL ]</button>
+            </div>
+          </div>
+
+          <div class="box">
+            <div class="box__head"><span>OUTBOUND MESSAGE</span><span>MAIL RELAY</span></div>
+            <form class="form" id="mail-form" novalidate>
+              <div class="field">
+                <label for="f-callsign">CALLSIGN</label>
+                <input id="f-callsign" name="callsign" type="text" autocomplete="name" placeholder="YOUR NAME">
+              </div>
+              <div class="field">
+                <label for="f-reply">RETURN FREQUENCY (EMAIL)</label>
+                <input id="f-reply" name="reply" type="email" autocomplete="email" placeholder="YOU@DOMAIN.COM">
+              </div>
+              <div class="field">
+                <label for="f-msg">TRANSMISSION</label>
+                <textarea id="f-msg" name="message" rows="3" placeholder="MESSAGE TEXT"></textarea>
+              </div>
+              <button class="btn btn--primary" type="submit">[ SEND TRANSMISSION ]</button>
+              <p class="status-line" id="form-status" aria-live="polite"></p>
+            </form>
+          </div>
+        </section>
+
+      </main>
+
+      <!-- ============ FOOTER STATUS BAR ============ -->
+      <footer class="status status--foot">
+        <div class="status__group">
+          <span class="dim">KEYS: [1-4] TABS // [UP/DOWN] INVENTORY</span>
+        </div>
+        <div class="status__group">
+          <button class="btn" id="sfx-toggle" aria-pressed="true" style="min-height:34px;padding:4px 10px">SFX: ON</button>
+          <span class="dim">ROBCO IND. OS v3.8</span>
+        </div>
+      </footer>
+
+    </div><!-- /.os -->
+  </div><!-- /.screen -->
+</div><!-- /.rig -->
+
+<noscript>
+  <p style="padding:14px;text-align:center">// JAVASCRIPT IS REQUIRED TO OPERATE THIS PIP-BOY TERMINAL</p>
+</noscript>
+
+<script>
+'use strict';
+
+/* ============================================================
+   1. PORTFOLIO DATA
+   Every [REAL DATA: ...] marker in the UI comes from here.
+   Fill a field and the marker disappears. Leave it null and
+   the UI shows the honest placeholder instead.
+   ============================================================ */
+const PORTFOLIO_DATA = {
+  identity: {
+    name: null,          /* [REAL DATA: FULL NAME] */
+    role: null,          /* [REAL DATA: ROLE / TITLE] */
+    bio: null,           /* [REAL DATA: 2-3 SENTENCE DEVELOPER BIO] */
+    location: null,      /* [REAL DATA: CITY // UTC OFFSET] */
+    availability: null   /* [REAL DATA: e.g. OPEN TO FULL-TIME ROLES] */
+  },
+
+  /* value: integer 0-10, or null while uncalibrated */
+  special: [
+    { stat: 'STRENGTH',     skill: 'BACKEND & INFRASTRUCTURE',    value: null },
+    { stat: 'PERCEPTION',   skill: 'DEBUGGING, QA & CODE REVIEW', value: null },
+    { stat: 'ENDURANCE',    skill: 'CI/CD, DEVOPS & RELIABILITY', value: null },
+    { stat: 'CHARISMA',     skill: 'LEADERSHIP & CLIENT COMMS',   value: null },
+    { stat: 'INTELLIGENCE', skill: 'ALGORITHMS, AI & DATA STRUCTURES', value: null },
+    { stat: 'AGILITY',      skill: 'FRONTEND & UI/UX CRAFT',      value: null },
+    { stat: 'LUCK',         skill: 'TROUBLESHOOTING & HOTFIXES',  value: null }
+  ],
+
+  /* category: WEAPONS (main web apps) | ARMOR (systems/APIs) | AID (libs/OSS) */
+  projects: [
+    { name: null, category: 'WEAPONS', desc: null, stack: null, dmg: null, wgt: null, val: null, live: null, repo: null },
+    { name: null, category: 'ARMOR',  desc: null, stack: null, dmg: null, wgt: null, val: null, live: null, repo: null },
+    { name: null, category: 'AID',    desc: null, stack: null, dmg: null, wgt: null, val: null, live: null, repo: null }
+  ],
+
+  quests: {
+    main: [
+      { title: null, org: null, period: null, points: [] },
+      { title: null, org: null, period: null, points: [] }
+    ],
+    side: [
+      { title: null, org: null, period: null, points: [] }
+    ],
+    completed: [
+      { title: null, org: null, period: null, points: [] },
+      { title: null, org: null, period: null, points: [] }
+    ]
+  },
+
+  /* href: full URL, or null while unconfigured */
+  radio: [
+    { freq: 88.5,  band: 'EMAIL // DIRECT CONTACT', href: null },
+    { freq: 94.1,  band: 'GITHUB // SOURCE VAULT',  href: null },
+    { freq: 102.3, band: 'LINKEDIN // CAREER LOG',  href: null },
+    { freq: 107.9, band: 'X // FIELD NOTES',        href: null }
+  ],
+
+  /* address used by the outbound message form */
+  contact: { email: null }
+};
+
+/* ============================================================
+   2. HELPERS
+   ============================================================ */
+const $  = (sel, root = document) => root.querySelector(sel);
+const $$ = (sel, root = document) => Array.from(root.querySelectorAll(sel));
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+
+function esc(v) {
+  return String(v).replace(/[&<>"']/g, c => (
+    { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]
+  ));
+}
+/* honest placeholder marker, per antislop R-23 / R-38 */
+function ph(label) {
+  return '<span class="ph" title="Placeholder: set this in PORTFOLIO_DATA">[REAL DATA: ' + label + ']</span>';
+}
+function val(v, label) { return v ? esc(v) : ph(label); }
+
+/* ============================================================
+   3. SFX (Web Audio API, no audio files)
+   ============================================================ */
+const SFX = (() => {
+  let ctx = null;
+  let muted = false;
+  try { muted = localStorage.getItem('pip-sfx') === 'off'; } catch (e) { /* storage blocked */ }
+
+  function ensure() {
+    if (!ctx) {
+      try { ctx = new (window.AudioContext || window.webkitAudioContext)(); }
+      catch (e) { return; }
+    }
+    if (ctx.state === 'suspended') ctx.resume();
+  }
+  function tone(freq, dur, type, vol) {
+    if (muted || !ctx) return;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    gain.gain.setValueAtTime(vol, t);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t);
+    osc.stop(t + dur + 0.02);
+  }
+  let lastHover = 0;
+  return {
+    ensure,
+    /* high square blip, 800Hz, 0.03s */
+    hover() {
+      const now = performance.now();
+      if (now - lastHover < 55) return;
+      lastHover = now;
+      ensure(); tone(800, 0.03, 'square', 0.028);
+    },
+    /* low mechanical clack, 150Hz, fast decay */
+    click() { ensure(); tone(150, 0.09, 'square', 0.09); },
+    isMuted() { return muted; },
+    toggle() {
+      muted = !muted;
+      try { localStorage.setItem('pip-sfx', muted ? 'off' : 'on'); } catch (e) { /* ignore */ }
+      if (!muted) { ensure(); tone(900, 0.06, 'square', 0.05); }
+      return muted;
+    }
+  };
+})();
+
+/* ============================================================
+   4. CLOCK (24h)
+   ============================================================ */
+const DAYS   = ['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'];
+const MONTHS = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+const pad = n => String(n).padStart(2, '0');
+
+function tickClock() {
+  const d = new Date();
+  $('#clock-time').textContent  = pad(d.getHours()) + ':' + pad(d.getMinutes()) + ':' + pad(d.getSeconds());
+  $('#clock-date').textContent  = DAYS[d.getDay()] + ' ' + pad(d.getDate()) + ' ' + MONTHS[d.getMonth()] + ' ' + d.getFullYear();
+}
+
+/* ============================================================
+   5. MAIN TABS + KEYBOARD
+   ============================================================ */
+const TABS = ['stat', 'inv', 'data', 'radio'];
+let activeTab = 'stat';
+
+function switchTab(name, opts = {}) {
+  if (!TABS.includes(name)) return;
+  activeTab = name;
+
+  TABS.forEach(t => {
+    const btn = $('#tab-' + t);
+    const on = t === name;
+    btn.setAttribute('aria-selected', String(on));
+    btn.tabIndex = on ? 0 : -1;
+    $('#panel-' + t).hidden = !on;
+  });
+
+  const panel = $('#panel-' + name);
+  if (!reducedMotion.matches) {
+    panel.classList.remove('glitch');
+    void panel.offsetWidth; /* restart animation */
+    panel.classList.add('glitch');
+  }
+  if (opts.focus) $('#tab-' + name).focus();
+  if (name === 'stat') litSpecial();
+  if (name === 'radio') Radio.onOpen(); else Radio.onClose();
+}
+
+/* ============================================================
+   6. STAT PANEL
+   ============================================================ */
+function renderStat() {
+  const idn = PORTFOLIO_DATA.identity;
+  $('#stat-name').innerHTML  = val(idn.name, 'FULL NAME');
+  $('#stat-role').innerHTML  = val(idn.role, 'ROLE / TITLE');
+  $('#stat-loc').innerHTML   = val(idn.location, 'CITY // UTC OFFSET');
+  $('#stat-avail').innerHTML = val(idn.availability, 'AVAILABILITY');
+  $('#stat-bio').innerHTML   = val(idn.bio, '2-3 SENTENCE DEVELOPER BIO');
+
+  $('#special-list').innerHTML = PORTFOLIO_DATA.special.map(s => {
+    const ok = Number.isInteger(s.value);
+    const v = ok ? Math.min(10, Math.max(0, s.value)) : null;
+    const segs = Array.from({ length: 10 }, (_, i) =>
+      '<i class="' + (v !== null && i < v ? 'on' : '') + '" style="--i:' + i + '"></i>'
+    ).join('');
+    return '' +
+      '<div class="stat-row">' +
+        '<div class="stat-row__head">' +
+          '<span>[' + esc(s.stat[0]) + '] ' + esc(s.stat) + '</span>' +
+          '<span class="stat-row__val">' + (ok ? v + '/10' : '--/10') + '</span>' +
+        '</div>' +
+        '<div class="stat-row__skill dim">' + esc(s.skill) + '</div>' +
+        '<div class="segs">' + segs + '</div>' +
+      '</div>';
+  }).join('');
+
+  const uncal = PORTFOLIO_DATA.special.some(s => !Number.isInteger(s.value));
+  const notice = $('#special-notice');
+  notice.textContent = uncal ? '// ATTRIBUTES UNCALIBRATED: SET 0-10 VALUES IN PORTFOLIO_DATA.special' : '';
+  notice.hidden = !uncal;
+}
+
+/* segments light up in sequence when the panel is shown */
+function litSpecial() {
+  $$('#special-list .segs').forEach(el => {
+    el.classList.remove('lit');
+    void el.offsetWidth;
+    el.classList.add('lit');
+  });
+}
+
+/* ============================================================
+   7. INV PANEL
+   ============================================================ */
+const inv = { filter: 'all', selected: 0 };
+
+function visibleProjects() {
+  return PORTFOLIO_DATA.projects
+    .map((p, i) => ({ p, i }))
+    .filter(x => inv.filter === 'all' || x.p.category === inv.filter);
+}
+
+function renderInvCounts() {
+  const all = PORTFOLIO_DATA.projects;
+  $$('[data-count]').forEach(el => {
+    const c = el.dataset.count;
+    const n = c === 'all' ? all.length : all.filter(p => p.category === c).length;
+    el.textContent = '(' + n + ')';
+  });
+}
+
+function renderInvList() {
+  const items = visibleProjects();
+  const list = $('#inv-list');
+  $('#inv-count').textContent = items.length + (items.length === 1 ? ' ITEM' : ' ITEMS');
+
+  if (!items.length) {
+    list.innerHTML = '<p class="empty">// NO ARTIFACTS IN THIS CATEGORY</p>';
+    renderInspector(null);
+    return;
+  }
+  if (!items.some(x => x.i === inv.selected)) inv.selected = items[0].i;
+
+  list.innerHTML = items.map(x => (
+    '<button class="item' + (x.i === inv.selected ? ' is-active' : '') + '" role="option" aria-selected="' +
+      (x.i === inv.selected) + '" data-i="' + x.i + '">' +
+      '<span class="item__cat">[' + esc(x.p.category) + ']</span>' +
+      '<span class="item__name">' + val(x.p.name, 'PROJECT NAME') + '</span>' +
+    '</button>'
+  )).join('');
+  renderInspector(inv.selected);
+}
+
+function selectProject(i, focus = false) {
+  inv.selected = i;
+  $$('#inv-list .item').forEach(b => {
+    const on = Number(b.dataset.i) === i;
+    b.classList.toggle('is-active', on);
+    b.setAttribute('aria-selected', String(on));
+    if (on && focus) { b.focus(); b.scrollIntoView({ block: 'nearest' }); }
+  });
+  renderInspector(i);
+}
+
+function moveSelection(delta) {
+  const items = visibleProjects();
+  if (!items.length) return;
+  const pos = items.findIndex(x => x.i === inv.selected);
+  const next = items[(pos + delta + items.length) % items.length];
+  selectProject(next.i, true);
+}
+
+function renderInspector(i) {
+  const body = $('#insp-body');
+  if (i === null) {
+    $('#insp-slot').textContent = 'SLOT --';
+    body.innerHTML = '<p class="empty">// NO ITEM SELECTED</p>';
+    return;
+  }
+  const p = PORTFOLIO_DATA.projects[i];
+  $('#insp-slot').textContent = 'SLOT ' + pad(i + 1);
+  body.innerHTML = '' +
+    '<div class="insp-title">' + val(p.name, 'PROJECT NAME') + '</div>' +
+    '<div class="shot">' +
+      '<span class="shot__tag">[ SCREENSHOT PENDING ]</span>' +
+      '<span class="dim">' + val(p.stack, 'TECH STACK') + '</span>' +
+    '</div>' +
+    '<p class="insp-desc">' + val(p.desc, 'PROJECT DESCRIPTION') + '</p>' +
+    '<div class="metrics">' +
+      '<span><b>DMG</b>IMPACT: ' + (p.dmg ? esc(p.dmg) : '--') + '</span>' +
+      '<span><b>WGT</b>STACK: ' + (p.wgt ? esc(p.wgt) : '--') + '</span>' +
+      '<span><b>VAL</b>PERF: ' + (p.val ? esc(p.val) : '--') + '</span>' +
+    '</div>' +
+    '<div class="insp-actions">' +
+      '<button class="btn btn--primary" data-act="live">[ EQUIP // LIVE DEMO ]</button>' +
+      '<button class="btn" data-act="repo">[ INSPECT // GITHUB ]</button>' +
+    '</div>' +
+    '<p class="status-line" id="insp-status" aria-live="polite"></p>';
+}
+
+function inspAction(kind) {
+  const p = PORTFOLIO_DATA.projects[inv.selected];
+  if (!p) return;
+  const line = $('#insp-status');
+  const url = kind === 'live' ? p.live : p.repo;
+  const field = kind === 'live' ? 'live' : 'repo';
+  if (!url) {
+    line.className = 'status-line err';
+    line.textContent = '!! UPLINK NOT CONFIGURED: SET projects[' + inv.selected + '].' + field + ' IN PORTFOLIO_DATA';
+    return;
+  }
+  line.className = 'status-line ok';
+  line.textContent = '// OPENING ' + url;
+  window.open(url, '_blank', 'noopener');
+}
+
+/* ============================================================
+   8. DATA PANEL (QUEST LOG)
+   ============================================================ */
+const QUEST_TAGS = { main: '[MAIN]', side: '[SIDE]', completed: '[DONE]' };
+let questFilter = 'main';
+let openQuest = null;
+
+function renderQuests() {
+  const list = PORTFOLIO_DATA.quests[questFilter] || [];
+  const wrap = $('#quest-list');
+  openQuest = null;
+
+  if (!list.length) {
+    wrap.innerHTML = '<p class="empty">// NO QUESTS LOGGED IN THIS SECTION</p>';
+    return;
+  }
+  wrap.innerHTML = list.map((q, i) => {
+    const pts = (q.points && q.points.length)
+      ? q.points.map(pt => '<li>' + val(pt, 'RESPONSIBILITY / ACHIEVEMENT') + '</li>').join('')
+      : '<li>' + ph('RESPONSIBILITY / ACHIEVEMENT') + '</li>';
+    const id = 'quest-body-' + questFilter + '-' + i;
+    return '' +
+      '<div class="quest" data-q="' + i + '">' +
+        '<button class="quest__head" aria-expanded="false" aria-controls="' + id + '">' +
+          '<span class="quest__tag">' + QUEST_TAGS[questFilter] + '</span>' +
+          '<span class="quest__title">' + val(q.title, 'QUEST TITLE') + ' <span class="dim">@ ' + val(q.org, 'ORG') + '</span></span>' +
+          '<span class="quest__tag">[ ' + val(q.period, 'PERIOD') + ' ] <span class="mark">[+]</span></span>' +
+        '</button>' +
+        '<div class="quest__body" id="' + id + '"><div class="quest__inner"><div class="quest__pad">' +
+          '<ul>' + pts + '</ul>' +
+          '<p class="quest__reward">' + ph('REWARD / OUTCOME') + '</p>' +
+        '</div></div></div>' +
+      '</div>';
+  }).join('');
+}
+
+function toggleQuest(i) {
+  const items = $$('#quest-list .quest');
+  const target = items[i];
+  const wasOpen = target.classList.contains('is-open');
+
+  items.forEach(el => {
+    el.classList.remove('is-open');
+    const h = $('.quest__head', el);
+    h.setAttribute('aria-expanded', 'false');
+    $('.mark', h).textContent = '[+]';
+  });
+  if (!wasOpen) {
+    target.classList.add('is-open');
+    const h = $('.quest__head', target);
+    h.setAttribute('aria-expanded', 'true');
+    $('.mark', h).textContent = '[-]';
+    openQuest = i;
+  } else {
+    openQuest = null;
+  }
+}
+
+/* ============================================================
+   9. RADIO PANEL
+   ============================================================ */
+const Radio = (() => {
+  const cv = $('#wave');
+  const cx = cv.getContext('2d');
+  let idx = 0;
+  let freqShown = PORTFOLIO_DATA.radio[0].freq;
+  let amp = 0.25, ampTarget = 0.25;
+  let waveRAF = null, tuneRAF = null;
+  let open = false;
+
+  function buildList() {
+    $('#freq-list').innerHTML = PORTFOLIO_DATA.radio.map((s, i) => (
+      '<button class="freq' + (i === 0 ? ' is-active' : '') + '" data-freq="' + i + '">' +
+        '<span class="freq__mhz">' + s.freq.toFixed(1) + ' MHZ</span>' +
+        '<span>' + esc(s.band) + '</span>' +
+        '<span class="freq__state">' + (s.href ? 'READY' : 'UNSET') + '</span>' +
+      '</button>'
+    )).join('');
+  }
+
+  function fitCanvas() {
+    const r = cv.getBoundingClientRect();
+    if (!r.width) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+    cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function drawWave(t) {
+    const w = cv.clientWidth, h = cv.clientHeight;
+    if (!w || !h) return;
+    cx.clearRect(0, 0, w, h);
+
+    /* center baseline */
+    cx.strokeStyle = '#004411';
+    cx.lineWidth = 1;
+    cx.setLineDash([4, 6]);
+    cx.beginPath();
+    cx.moveTo(0, h / 2);
+    cx.lineTo(w, h / 2);
+    cx.stroke();
+    cx.setLineDash([]);
+
+    amp += (ampTarget - amp) * 0.06;
+    const f = 0.045 + idx * 0.012;
+    cx.lineWidth = 2;
+    cx.strokeStyle = '#00FF66';
+    cx.shadowBlur = 8;
+    cx.shadowColor = 'rgba(0,255,102,.55)';
+    cx.beginPath();
+    for (let x = 0; x <= w; x += 2) {
+      const noise = (Math.random() - 0.5) * (1 - amp) * 18; /* static when signal is weak */
+      const y = h / 2
+        + Math.sin(x * f + t) * amp * (h / 3.2)
+        + Math.sin(x * f * 2.7 + t * 1.6) * amp * (h / 14)
+        + noise;
+      x === 0 ? cx.moveTo(x, y) : cx.lineTo(x, y);
+    }
+    cx.stroke();
+    cx.shadowBlur = 0;
+  }
+
+  function loop(now) {
+    if (!open || document.hidden) { waveRAF = null; return; }
+    drawWave(now / 420);
+    waveRAF = requestAnimationFrame(loop);
+  }
+
+  function startWave() {
+    if (reducedMotion.matches) { fitCanvas(); drawWave(0); return; }
+    if (waveRAF === null) waveRAF = requestAnimationFrame(loop);
+  }
+  function stopWave() {
+    if (waveRAF !== null) { cancelAnimationFrame(waveRAF); waveRAF = null; }
+  }
+
+  function setMeter(lit) {
+    $('#signal-meter').innerHTML = Array.from({ length: 10 }, (_, i) =>
+      '<i class="' + (i < lit ? 'on' : '') + '"></i>'
+    ).join('');
+  }
+
+  function animateFreq(from, to, done) {
+    cancelAnimationFrame(tuneRAF);
+    if (reducedMotion.matches) {
+      freqShown = to;
+      $('#tuner-freq').textContent = to.toFixed(1) + ' MHZ';
+      done();
+      return;
+    }
+    const t0 = performance.now(), dur = 650;
+    (function step(now) {
+      const p = Math.min(1, (now - t0) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      freqShown = from + (to - from) * e;
+      $('#tuner-freq').textContent = freqShown.toFixed(1) + ' MHZ';
+      if (p < 1) tuneRAF = requestAnimationFrame(step);
+      else done();
+    })(performance.now());
+  }
+
+  function tune(i, instant = false) {
+    idx = i;
+    const st = PORTFOLIO_DATA.radio[i];
+    $$('#freq-list .freq').forEach((b, k) => b.classList.toggle('is-active', k === i));
+    $('#tuner-band').textContent = st.band;
+    $('#signal-state').textContent = 'SCANNING';
+    $('#radio-status').className = 'status-line';
+    $('#radio-status').textContent = '// SCANNING ' + st.freq.toFixed(1) + ' MHZ ...';
+    ampTarget = 0.2;
+
+    const finish = () => {
+      if (st.href) {
+        $('#signal-state').textContent = 'SIGNAL LOCKED';
+        $('#radio-status').className = 'status-line ok';
+        $('#radio-status').textContent = '// CHANNEL READY: PRESS TRANSMIT TO OPEN';
+        ampTarget = 0.95;
+        setMeter(9);
+      } else {
+        $('#signal-state').textContent = 'NO SIGNAL';
+        $('#radio-status').className = 'status-line err';
+        $('#radio-status').textContent = '!! FREQUENCY UNCONFIGURED: SET radio[' + i + '].href IN PORTFOLIO_DATA';
+        ampTarget = 0.18;
+        setMeter(1);
+      }
+    };
+    if (instant) { freqShown = st.freq; $('#tuner-freq').textContent = st.freq.toFixed(1) + ' MHZ'; finish(); }
+    else animateFreq(freqShown, st.freq, finish);
+  }
+
+  function transmit() {
+    const st = PORTFOLIO_DATA.radio[idx];
+    const line = $('#radio-status');
+    if (!st.href) {
+      line.className = 'status-line err';
+      line.textContent = '!! NO TRANSMISSION PATH: SET radio[' + idx + '].href IN PORTFOLIO_DATA';
+      return;
+    }
+    line.className = 'status-line ok';
+    line.textContent = '// OPENING ' + st.href;
+    window.open(st.href, '_blank', 'noopener');
+  }
+
+  return {
+    boot() { buildList(); setMeter(1); tune(0, true); fitCanvas(); },
+    tune, transmit, startWave, stopWave, fitCanvas,
+    onOpen() { open = true; fitCanvas(); startWave(); },
+    onClose() { open = false; stopWave(); }
+  };
+})();
+
+/* ============================================================
+   10. MAIL FORM
+   ============================================================ */
+function submitMail(e) {
+  e.preventDefault();
+  const line = $('#form-status');
+  const callsign = $('#f-callsign').value.trim();
+  const reply = $('#f-reply').value.trim();
+  const message = $('#f-msg').value.trim();
+
+  if (!callsign || !reply || !message) {
+    line.className = 'status-line err';
+    line.textContent = '!! ERR 01: ALL FIELDS REQUIRED FOR TRANSMISSION';
+    return;
+  }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(reply)) {
+    line.className = 'status-line err';
+    line.textContent = '!! ERR 02: RETURN FREQUENCY IS NOT A VALID ADDRESS';
+    return;
+  }
+  const dest = PORTFOLIO_DATA.contact.email;
+  if (!dest) {
+    line.className = 'status-line err';
+    line.textContent = '!! ERR 03: MAIL RELAY OFFLINE: SET contact.email IN PORTFOLIO_DATA';
+    return;
+  }
+  const subject = '[Pip-Boy transmission] ' + callsign;
+  const body = message + '\n\n--\nFrom: ' + callsign + ' <' + reply + '>';
+  line.className = 'status-line ok';
+  line.textContent = '// HANDING TRANSMISSION TO MAIL RELAY';
+  window.location.href = 'mailto:' + dest + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(body);
+}
+
+/* ============================================================
+   11. EVENT WIRING
+   ============================================================ */
+function wireEvents() {
+  /* main tabs */
+  $$('.tab').forEach(btn => {
+    btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  /* INV filters */
+  $$('.filters .btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      inv.filter = btn.dataset.filter;
+      $$('.filters .btn').forEach(b => b.classList.toggle('is-active', b === btn));
+      const items = visibleProjects();
+      if (items.length) inv.selected = items[0].i;
+      renderInvList();
+    });
+  });
+
+  /* INV list selection + inspector actions (delegated) */
+  $('#inv-list').addEventListener('click', e => {
+    const b = e.target.closest('.item');
+    if (b) selectProject(Number(b.dataset.i));
+  });
+  $('#insp-body').addEventListener('click', e => {
+    const b = e.target.closest('[data-act]');
+    if (b) inspAction(b.dataset.act);
+  });
+
+  /* DATA sub tabs + accordion */
+  $$('.subtabs .btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      questFilter = btn.dataset.quest;
+      $$('.subtabs .btn').forEach(b => b.classList.toggle('is-active', b === btn));
+      renderQuests();
+    });
+  });
+  $('#quest-list').addEventListener('click', e => {
+    const head = e.target.closest('.quest__head');
+    if (head) toggleQuest(Number(head.closest('.quest').dataset.q));
+  });
+
+  /* RADIO */
+  $('#freq-list').addEventListener('click', e => {
+    const b = e.target.closest('.freq');
+    if (b) Radio.tune(Number(b.dataset.freq));
+  });
+  $('#btn-transmit').addEventListener('click', () => Radio.transmit());
+  $('#mail-form').addEventListener('submit', submitMail);
+
+  /* SFX toggle */
+  const sfxBtn = $('#sfx-toggle');
+  const paintSfx = () => {
+    const muted = SFX.isMuted();
+    sfxBtn.textContent = muted ? 'SFX: OFF' : 'SFX: ON';
+    sfxBtn.setAttribute('aria-pressed', String(!muted));
+    sfxBtn.classList.toggle('is-active', !muted);
+  };
+  paintSfx();
+  sfxBtn.addEventListener('click', () => { SFX.toggle(); paintSfx(); });
+
+  /* audio unlock on first gesture */
+  document.addEventListener('pointerdown', () => SFX.ensure(), { capture: true });
+
+  /* hover blip: only on devices that actually hover */
+  if (matchMedia('(hover: hover)').matches) {
+    document.addEventListener('mouseover', e => {
+      if (e.target.closest('button, a, input, textarea')) SFX.hover();
+    });
+  }
+  /* click clack */
+  document.addEventListener('click', e => {
+    if (e.target.closest('button, a')) SFX.click();
+  });
+
+  /* keyboard: 1-4 switch tabs, up/down move inventory selection */
+  document.addEventListener('keydown', e => {
+    if (e.target.matches('input, textarea')) return;
+    if (e.metaKey || e.ctrlKey || e.altKey) return;
+    const map = { 1: 'stat', 2: 'inv', 3: 'data', 4: 'radio' };
+    if (map[e.key]) {
+      switchTab(map[e.key], { focus: true });
+      e.preventDefault();
+      return;
+    }
+    if (activeTab === 'inv' && (e.key === 'ArrowDown' || e.key === 'ArrowUp')) {
+      moveSelection(e.key === 'ArrowDown' ? 1 : -1);
+      e.preventDefault();
+    }
+  });
+
+  /* canvas upkeep */
+  window.addEventListener('resize', () => Radio.fitCanvas());
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) Radio.onClose();
+    else if (activeTab === 'radio') Radio.onOpen();
+  });
+}
+
+/* ============================================================
+   12. BOOT
+   ============================================================ */
+renderStat();
+renderInvCounts();
+renderInvList();
+renderQuests();
+Radio.boot();
+wireEvents();
+tickClock();
+setInterval(tickClock, 1000);
+switchTab('stat');
+</script>
+</body>
+</html>
